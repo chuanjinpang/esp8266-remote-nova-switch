@@ -302,6 +302,7 @@ def do_work_task(wlan):
             break
     print('WLAN connection succeeded!')
     print(wlan.ifconfig())
+    #
     client = connect_and_subscribe()
     #start mqtt
     last_time = utime.time()
@@ -313,26 +314,32 @@ def do_work_task(wlan):
             if last_power_cnt != power_cnt:
                 last_power_cnt=power_cnt
                 print('send a notify msg for power action flag')
-                msg = b'esp act:#%s pwr#%d' % (utime.time(),power_cnt)
+                msg = b'esp act:#%s pwr#%d' % (str(utime.localtime()),power_cnt)
                 client.publish(topic_pub, msg)
-            if (utime.time() - last_time) > 15:
-              print("done mqtt lite task")
-              break;
+            if (utime.time() - last_time) > 30:
+                print("done mqtt lite task")                
+                msg = b'esp act:#%s pwr#%d' % (str(utime.localtime()),power_cnt)
+                client.publish(topic_pub, msg)
+                break;
               
         except OSError as e:
             print(e)
     print('exit work task')
     
 def main_task(cfg_essid,work_essid):
+    global g_essid
     print(cfg_essid,work_essid)
-    wlan = network.WLAN(network.STA_IF)   
+    wlan = network.WLAN(network.STA_IF)
+    
     while True:
+        work_essid=g_essid       
         wlan.active(False) 
         print(wlan.status())
         wlan.active(True)
         print(wlan.status())
+        print("1st scan")
         nets=wlan.scan()
-        #print(nets)
+        print("nets:",len(nets))
         for net in nets:
             print(net[0])
             if net[0] == cfg_essid.encode():
@@ -349,8 +356,8 @@ def main_task(cfg_essid,work_essid):
                 except OSError as e:
                     print(e)
                 break
-        print("rescan")
-        utime.sleep(1)
+        print("rescan %s" %str(utime.localtime()))
+        utime.sleep(3)
 
 from machine import Timer
 
@@ -379,7 +386,7 @@ def user_sw_func(t):
 
 def timer_user_hardware_power_switch():
     tim = Timer(0)
-    tim.init(period=100, mode=Timer.PERIODIC, callback=user_sw_func)
+    tim.init(period=150, mode=Timer.PERIODIC, callback=user_sw_func)
 
 
 timer_user_hardware_power_switch()
